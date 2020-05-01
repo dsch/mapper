@@ -66,6 +66,13 @@ struct ProjTransform
 	QPointF forward(const LatLon& lat_lon, bool* ok) const;
 	LatLon inverse(const QPointF& projected, bool* ok) const;
 	
+#ifndef ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
+	/// Create a precise CRS to CRS transformation
+	static ProjTransform pipeline(const QString& source, const QString& target, const LatLon& reference);
+	/// Perform a pipeline transformation
+	QPointF transform(const QPointF& projected, bool* ok) const;
+#endif
+	
 	QString errorText() const;
 	
 private:

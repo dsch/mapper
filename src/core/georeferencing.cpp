@@ -325,6 +325,26 @@ ProjTransform& ProjTransform::operator=(ProjTransform&& other) noexcept
 	return *this;
 }
 
+// static
+ProjTransform ProjTransform::pipeline(const QString& source, const QString& target, const LatLon& reference)
+{
+	ProjTransform result;
+	auto source_latin1 = source.toLatin1();
+	auto target_latin1 = target.toLatin1();
+#ifdef PROJ_ISSUE_1573
+	// Cf. https://github.com/OSGeo/PROJ/pull/1573
+	source_latin1.replace("+datum=potsdam", "+ellps=bessel +nadgrids=@BETA2007.gsb");
+	target_latin1.replace("+datum=potsdam", "+ellps=bessel +nadgrids=@BETA2007.gsb");
+#endif
+	auto* area = proj_area_create();
+	proj_area_set_bbox(area,
+	                   reference.longitude()-0.1, reference.latitude()-0.1,
+	                   reference.longitude()+0.1, reference.latitude()+0.1);
+	result.pj = proj_create_crs_to_crs(PJ_DEFAULT_CTX, source_latin1.constData(), target_latin1.constData(), area);
+	proj_area_destroy(area);
+	return result;
+}
+
 bool ProjTransform::isValid() const noexcept
 {
 	return pj != nullptr;
@@ -354,13 +374,22 @@ LatLon ProjTransform::inverse(const QPointF& projected_coords, bool* ok) const
 	return {pj_coord.lp.phi, pj_coord.lp.lam};
 }
 
+QPointF ProjTransform::transform(const QPointF& projected_coords, bool* ok) const
+{
+	proj_errno_reset(pj);
+	auto pj_coord = proj_trans(pj, PJ_FWD, proj_coord(projected_coords.x(), projected_coords.y(), 0, HUGE_VAL));
+	if (ok)
+		*ok = proj_errno(pj) == 0;
+	return {pj_coord.xy.x, pj_coord.xy.y};
+}
+
 QString ProjTransform::errorText() const
 {
 	auto err_no = proj_errno(pj);
 	return (err_no == 0) ? QString() : QString::fromLatin1(proj_errno_string(err_no));
 }
 
-#endif
+#endif  // ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
 
 
 
@@ -1100,12 +1129,20 @@ MapCoordF Georeferencing::toMapCoordF(const Georeferencing* other, const MapCoor
 	bool ok_forward = proj_transform.isValid();
 	bool ok_inverse = other->proj_transform.isValid();
 	QPointF projected = other->toProjectedCoords(map_coords);
-	if (ok_forward && ok_inverse) {
+	if (ok_forward && ok_inverse)
+	{
+#ifdef ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
 		// Use geographic coordinates as intermediate step to enforce
 		// that coordinates are assumed to have WGS84 datum if datum is specified in only one CRS spec.
-		/// \todo Use direct pipeline instead of intermediate WGS84
-		bool ok_inverse, ok_forward;
 		projected = proj_transform.forward(other->proj_transform.inverse(projected, &ok_inverse), &ok_forward);
+#else
+		// Use direct pipeline instead of intermediate WGS84
+		auto pipeline = ProjTransform::pipeline(other->getProjectedCRSSpec(), getProjectedCRSSpec(), getGeographicRefPoint());
+		if (pipeline.isValid())
+			projected = pipeline.transform(projected, &ok_forward);
+		else
+			ok_forward = false;
+#endif
 	}
 	if (ok)
 		*ok = ok_inverse && ok_forward;
