@@ -60,6 +60,9 @@ struct ProjTransform
 	ProjTransform& operator=(const ProjTransform& other) = delete;
 	ProjTransform& operator=(ProjTransform&& other) noexcept;
 	
+	/// Create a PROJ CRS object.
+	static ProjTransform crs(const QString& crs_spec);
+	
 	bool isValid() const noexcept;
 	bool isGeographic() const;
 	

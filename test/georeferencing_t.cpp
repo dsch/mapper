@@ -259,6 +259,9 @@ void GeoreferencingTest::testCRS()
 #ifndef ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
 	// Test with IDs
 	{
+		auto t = ProjTransform::crs(id);
+		QVERIFY(t.isValid());
+		
 		Georeferencing georef;
 		QVERIFY2(georef.setProjectedCRS(id, id), georef.getErrorText().toLatin1());
 	}
@@ -266,6 +269,9 @@ void GeoreferencingTest::testCRS()
 	
 	// Test with specs.
 	{
+		auto t = ProjTransform::crs(spec);
+		QVERIFY(t.isValid());
+		
 		Georeferencing georef;
 		QVERIFY2(georef.setProjectedCRS(id, spec), georef.getErrorText().toLatin1());
 	}
