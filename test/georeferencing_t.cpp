@@ -246,24 +246,28 @@ void GeoreferencingTest::testCRS_data()
 {
 	QTest::addColumn<QString>("id");
 	QTest::addColumn<QString>("spec");
+	QTest::addColumn<bool>("is_geographic");
 	
-	QTest::newRow("WGS84")  << QStringLiteral("EPSG:4326")  << QStringLiteral("+init=epsg:4326");
-	QTest::newRow("UTM 32") << QStringLiteral("EPSG:32632") << utm32_spec;
+	QTest::newRow("WGS84")  << QStringLiteral("EPSG:4326")  << QStringLiteral("+init=epsg:4326") << true;
+	QTest::newRow("UTM 32") << QStringLiteral("EPSG:32632") << utm32_spec                        << false;
 }
 
 void GeoreferencingTest::testCRS()
 {
 	QFETCH(QString, id);
 	QFETCH(QString, spec);
+	QFETCH(bool, is_geographic);
 	
 #ifndef ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
 	// Test with IDs
 	{
 		auto t = ProjTransform::crs(id);
 		QVERIFY(t.isValid());
+		QCOMPARE(t.isGeographic(), is_geographic);
 		
 		Georeferencing georef;
 		QVERIFY2(georef.setProjectedCRS(id, id), georef.getErrorText().toLatin1());
+		QCOMPARE(georef.isGeographic(), is_geographic);
 	}
 #endif
 	
@@ -271,9 +275,11 @@ void GeoreferencingTest::testCRS()
 	{
 		auto t = ProjTransform::crs(spec);
 		QVERIFY(t.isValid());
+		QCOMPARE(t.isGeographic(), is_geographic);
 		
 		Georeferencing georef;
 		QVERIFY2(georef.setProjectedCRS(id, spec), georef.getErrorText().toLatin1());
+		QCOMPARE(georef.isGeographic(), is_geographic);
 	}
 }
 
