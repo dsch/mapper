@@ -247,16 +247,28 @@ void GeoreferencingTest::testCRS_data()
 	QTest::addColumn<QString>("id");
 	QTest::addColumn<QString>("spec");
 	
-	QTest::newRow("EPSG:4326") << QStringLiteral("EPSG:4326") << QStringLiteral("+init=epsg:4326");
-	QTest::newRow("UTM")       << QStringLiteral("UTM")       << utm32_spec;
+	QTest::newRow("WGS84")  << QStringLiteral("EPSG:4326")  << QStringLiteral("+init=epsg:4326");
+	QTest::newRow("UTM 32") << QStringLiteral("EPSG:32632") << utm32_spec;
 }
 
 void GeoreferencingTest::testCRS()
 {
 	QFETCH(QString, id);
 	QFETCH(QString, spec);
-	Georeferencing georef;
-	QVERIFY2(georef.setProjectedCRS(id, spec), georef.getErrorText().toLatin1());
+	
+#ifndef ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
+	// Test with IDs
+	{
+		Georeferencing georef;
+		QVERIFY2(georef.setProjectedCRS(id, id), georef.getErrorText().toLatin1());
+	}
+#endif
+	
+	// Test with specs.
+	{
+		Georeferencing georef;
+		QVERIFY2(georef.setProjectedCRS(id, spec), georef.getErrorText().toLatin1());
+	}
 }
 
 
